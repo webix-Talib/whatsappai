@@ -1,0 +1,17 @@
+# Dependencies
+node_modules/
+
+# Puppeteer browser binaries
+.local-chromium/
+puppeteer-core/.local-chromium/
+
+# Environment variables
+.env
+
+# Temporary files
+*.log
+*.tmp
+
+# OS files
+.DS_Store
+Thumbs.db

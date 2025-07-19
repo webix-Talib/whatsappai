@@ -1,0 +1,15 @@
+2025/07/14-09:25:19.959 275c Reusing MANIFEST C:\alexer\whatsapp-bot\.wwebjs_auth\session\Default\Local Storage\leveldb/MANIFEST-000001
+2025/07/14-09:25:19.959 275c Recovering log #16
+2025/07/14-09:25:19.960 275c Reusing old log C:\alexer\whatsapp-bot\.wwebjs_auth\session\Default\Local Storage\leveldb/000016.log 
+2025/07/14-09:26:20.658 4968 Level-0 table #20: started
+2025/07/14-09:26:20.663 4968 Level-0 table #20: 14603 bytes OK
+2025/07/14-09:26:20.664 4968 Delete type=0 #16
+2025/07/14-09:26:20.664 4968 Compacting 4@0 + 1@1 files
+2025/07/14-09:26:20.666 4968 Generated table #21@0: 121 keys, 6854 bytes
+2025/07/14-09:26:20.667 4968 Compacted 4@0 + 1@1 files => 6854 bytes
+2025/07/14-09:26:20.667 4968 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/07/14-09:26:20.668 4968 Delete type=2 #8
+2025/07/14-09:26:20.668 4968 Delete type=2 #11
+2025/07/14-09:26:20.668 4968 Delete type=2 #14
+2025/07/14-09:26:20.668 4968 Delete type=2 #17
+2025/07/14-09:26:20.668 4968 Delete type=2 #20

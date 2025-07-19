@@ -1,0 +1,25 @@
+2025/07/14-09:25:20.494 275c Reusing MANIFEST C:\alexer\whatsapp-bot\.wwebjs_auth\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/MANIFEST-000001
+2025/07/14-09:25:20.494 275c Recovering log #729
+2025/07/14-09:25:20.545 275c Reusing old log C:\alexer\whatsapp-bot\.wwebjs_auth\session\Default\IndexedDB\https_web.whatsapp.com_0.indexeddb.leveldb/000729.log 
+2025/07/14-09:25:22.191 358c Level-0 table #740: started
+2025/07/14-09:25:22.202 358c Level-0 table #740: 693867 bytes OK
+2025/07/14-09:25:22.203 358c Delete type=0 #729
+2025/07/14-09:25:22.203 358c Manual compaction at level-0 from '\x00d\x00\x00\x00' @ 72057594037927935 : 1 .. '\x00e\x00\x00\x00' @ 0 : 0; will stop at (end)
+2025/07/14-09:25:23.776 4968 Compacting 1@1 + 7@2 files
+2025/07/14-09:25:23.866 4968 Generated table #741@1: 85343 keys, 2233701 bytes
+2025/07/14-09:25:23.937 4968 Generated table #742@1: 74165 keys, 2248387 bytes
+2025/07/14-09:25:23.959 4968 Generated table #743@1: 1923 keys, 2154983 bytes
+2025/07/14-09:25:24.002 4968 Generated table #744@1: 13156 keys, 2202419 bytes
+2025/07/14-09:25:24.073 4968 Generated table #745@1: 28306 keys, 2274215 bytes
+2025/07/14-09:25:24.125 4968 Generated table #746@1: 40477 keys, 2178907 bytes
+2025/07/14-09:25:24.188 4968 Generated table #747@1: 71302 keys, 1506220 bytes
+2025/07/14-09:25:24.188 4968 Compacted 1@1 + 7@2 files => 14798832 bytes
+2025/07/14-09:25:24.189 4968 compacted to: files[ 0 0 7 0 0 0 0 ]
+2025/07/14-09:25:24.189 4968 Delete type=2 #731
+2025/07/14-09:25:24.189 4968 Delete type=2 #732
+2025/07/14-09:25:24.189 4968 Delete type=2 #733
+2025/07/14-09:25:24.189 4968 Delete type=2 #734
+2025/07/14-09:25:24.189 4968 Delete type=2 #735
+2025/07/14-09:25:24.189 4968 Delete type=2 #736
+2025/07/14-09:25:24.189 4968 Delete type=2 #737
+2025/07/14-09:25:24.189 4968 Delete type=2 #740
