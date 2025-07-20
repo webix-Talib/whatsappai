@@ -7,7 +7,6 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
-const ffmpeg = require('ffmpeg-static');
 
 const OWNER_NUMBER = process.env.OWNER_NUMBER?.replace('+', '');
 const YT_API_KEY = process.env.YT_API_KEY;
