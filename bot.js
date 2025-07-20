@@ -12,7 +12,18 @@ const OWNER_NUMBER = process.env.OWNER_NUMBER?.replace('+', '');
 const YT_API_KEY = process.env.YT_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-const client = new Client({ authStrategy: new LocalAuth() });
+const client = new Client({
+    puppeteer: {
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage' // Good practice for limited memory environments
+        ]
+    },
+    
+    authStrategy: new LocalAuth(), 
+    
+});
 
 client.on('qr', qr => qrcode.generate(qr, { small: true }));
 client.on('ready', () => console.log('✅ Bot is ready!'));
