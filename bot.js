@@ -1,4 +1,6 @@
 require('dotenv').config();
+const express = require('express');
+const app = express();
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
