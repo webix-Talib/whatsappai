@@ -72,6 +72,16 @@ client.on('message', async msg => {
 📜 *!menu* — Show this menu`);
     }
 
+    
+    if (msg.body.startsWith('!ping')) {
+        msg.reply('pong');
+    }
+    
+    if (msg.body.startsWith('!hello')) {
+        msg.reply('Hello from the bot!');
+    }
+    console.log("Received message:", msg.body);
+
     if (command === '!yt') {
         const searchQuery = msg.body.replace('!yt ', '').trim();
         if (!searchQuery) return msg.reply('Use: !yt <search>');
