@@ -25,6 +25,16 @@ const client = new Client({
     
 });
 
+app.get('/', (req, res) => {
+    res.send('WhatsApp Bot is running and healthy!');
+});
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
+app.listen(PORT, () => {
+    console.log(`Web server listening on port ${PORT}`);
+});
+
 client.on('qr', qr => qrcode.generate(qr, { small: true }));
 client.on('ready', () => console.log('✅ Bot is ready!'));
 
