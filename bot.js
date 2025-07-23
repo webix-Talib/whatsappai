@@ -19,13 +19,10 @@ const client = new Client({
     puppeteer: {
         args: [
             '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage' // Good practice for limited memory environments
+            '--disable-setuid-sandbox'
         ]
     },
-    
-    authStrategy: new LocalAuth(), 
-    
+    authStrategy: new LocalAuth(),
 });
 
 app.get('/', (req, res) => {
