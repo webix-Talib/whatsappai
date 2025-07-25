@@ -1,5 +1,4 @@
 require('dotenv').config();
-const PORT = process.env.PORT || 3000;
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
 const axios = require('axios');
@@ -8,13 +7,40 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
+const express = require('express');
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+let client;
+
+client = new Client({
+  puppeteer: {
+    args: ['--no-sandbox', '--disable-setuid-sandbox']
+  },
+  authStrategy: new LocalAuth()
+});
+
+client.on('qr', qr => qrcode.generate(qr, { small: true }));
+client.on('ready', () => console.log('✅ Bot is ready!'));
+
+try {
+  client.initialize();
+  console.log('✅ Bot initialized at startup.');
+} catch (error) {
+  console.error('❌ Failed to initialize bot:', error);
+}
+
+
+    // ✅ Start Express server
+app.listen(PORT, () => {
+  console.log(`🚀 Server is running at http://localhost:${PORT}`);
+});
 
 const OWNER_NUMBER = process.env.OWNER_NUMBER?.replace('+', '');
 const YT_API_KEY = process.env.YT_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
-client.on('qr', qr => qrcode.generate(qr, { small: true }));
-client.on('ready', () => console.log('✅ Bot is ready!'));
+
 
 client.on('message', async msg => {
     const command = msg.body.split(' ')[0];
