@@ -1,6 +1,4 @@
 require('dotenv').config();
-const express = require('express');
-const app = express();
 const PORT = process.env.PORT || 3000;
 const { Client, LocalAuth, MessageMedia } = require('whatsapp-web.js');
 const qrcode = require('qrcode-terminal');
@@ -14,26 +12,6 @@ const ffmpeg = require('fluent-ffmpeg');
 const OWNER_NUMBER = process.env.OWNER_NUMBER?.replace('+', '');
 const YT_API_KEY = process.env.YT_API_KEY;
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-
-const client = new Client({
-    puppeteer: {
-        args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox'
-        ]
-    },
-    authStrategy: new LocalAuth(),
-});
-
-app.get('/', (req, res) => {
-    res.send('WhatsApp Bot is running and healthy!');
-});
-app.get('/health', (req, res) => {
-    res.status(200).send('OK');
-});
-app.listen(PORT, () => {
-    console.log(`Web server listening on port ${PORT}`);
-});
 
 client.on('qr', qr => qrcode.generate(qr, { small: true }));
 client.on('ready', () => console.log('✅ Bot is ready!'));
@@ -69,15 +47,6 @@ client.on('message', async msg => {
 📜 *!menu* — Show this menu`);
     }
 
-    
-    if (msg.body.startsWith('!ping')) {
-        msg.reply('pong');
-    }
-    
-    if (msg.body.startsWith('!hello')) {
-        msg.reply('Hello from the bot!');
-    }
-    console.log("Received message:", msg.body);
 
     if (command === '!yt') {
         const searchQuery = msg.body.replace('!yt ', '').trim();
