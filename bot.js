@@ -7,34 +7,20 @@ const fs = require('fs');
 const path = require('path');
 const { exec } = require('child_process');
 const ffmpeg = require('fluent-ffmpeg');
-const express = require('express');
-const app = express();
-const PORT = process.env.PORT || 3000;
+const exifr = require('exifr'); // For metadata extraction
+const FormData = require('form-data');
+const triviaState = {}; // Object to hold active trivia games in different chats
 
-let client;
-
-client = new Client({
-  puppeteer: {
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
-  },
-  authStrategy: new LocalAuth()
+const client = new Client({
+    authStrategy: new LocalAuth(),
+    puppeteer: {
+        headless: false, // for debugging
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    }
 });
 
 client.on('qr', qr => qrcode.generate(qr, { small: true }));
 client.on('ready', () => console.log('✅ Bot is ready!'));
-
-try {
-  client.initialize();
-  console.log('✅ Bot initialized at startup.');
-} catch (error) {
-  console.error('❌ Failed to initialize bot:', error);
-}
-
-
-    // ✅ Start Express server
-app.listen(PORT, () => {
-  console.log(`🚀 Server is running at http://localhost:${PORT}`);
-});
 
 const OWNER_NUMBER = process.env.OWNER_NUMBER?.replace('+', '');
 const YT_API_KEY = process.env.YT_API_KEY;
@@ -44,7 +30,7 @@ const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 client.on('message', async msg => {
     const command = msg.body.split(' ')[0];
-    const args = msg.body.split(' ');
+    const args = msg.body.split(' ').slice(1);
     const chat = await msg.getChat();
     const contact = await msg.getContact();
     const rawSender = contact.id._serialized;
@@ -53,26 +39,279 @@ client.on('message', async msg => {
     const isOwner = sender === owner;
 
     if (command === '!menu') {
-        msg.reply(`🤖 *Bot Commands Menu*:
+        msg.reply(`*╔═══『 🤖 WhatsApp Bot Menu 』═══╗*
 
-🔍 *!yt <search>* — Search YouTube
-🎵 *!mp3 <yt-link>* — Download YouTube MP3
-🗣️ *!say <text>* — Text to Speech
-📇 *!contact* — Bot creator info
-🧠 *!ai <prompt>* — Ask Gemini AI
-👋 *!welcome* — Manual welcome message
-🦶 *!kick @user* — Kick tagged user (Admin only)
-🧹 *!remove @user* — Remove tagged user (Admin only)
-📢 *!broadcast <msg>* — Broadcast message (Owner only)
-📚 *!wiki <term>* — Search Wikipedia
-🌐 *!translate <language> <text>* — Translate text (like google translate)
-📊 *!percentage <score> <total>* -- Calculate percentage
-🔎 *!whois @user* — Info of user
-🏷️ *!tagall* — Mention all users
-🧮 *!math <expression>* — Calculate
-📜 *!menu* — Show this menu`);
+🎥 *YouTube & Media*
+┃🔍 *!yt <search>* – Search YouTube  
+┃🎵 *!mp3 <yt-link>* – Download MP3    
+┃🖼️ *!sticker* – Convert image/video to sticker  
+┃🚫 *!removebg* – Remove background from image  
+┃🖼️ *!img5 <query>* – Get 5 image results of anything
+🎥 *!imdb <movie>* – Get movie/TV show info
+
+
+🗣️ *Voice & AI*
+┃🗣️ *!say <text>* – English TTS  
+┃🎤 *!tts <lang> <text>* – TTS in any language  
+┃🧠 *!ai <prompt>* – Ask Gemini AI  
+┃📚 *!wiki <term>* – Wikipedia summary  
+┃🌐 *!translate <lang> <text>* – Translate text 
+┃📖 *!define <word>* – Get dictionary definition 
+┃🧮 *!math <expression>* – Math calculator  
+🧠 *!trivia* – Start a new trivia game
+
+👥 *Group Utilities*
+┃🏷️ *!tagall* – Mention all members  
+┃🦶 *!kick @user* – Kick user (Admin only)  
+┃🧹 *!remove @user* – Remove user (Admin only)  
+┃👋 *!welcome* – Send welcome message  
+┃📢 *!broadcast <msg>* – Owner broadcast  
+
+🔧 *Admin / Group Tools*
+┃📊 *!groupinfo* – View group stats  
+┃📢 *!mention <msg>* – Mention all with custom text  
+┃🚫 *!antilink on/off* – Auto-remove link spammers  
+┃🔒 *!lock* – Lock group (admins only)  
+┃🔓 *!unlock* – Unlock group  
+┃⬆️ *!promote @user* – Make user admin  
+┃⬇️ *!demote @user* – Remove admin rights
+
+
+📊 *User Tools*
+💰 *!crypto <symbol>* – Get crypto price (e.g., btc)
+┃📊 *!percentage <score> <total>* – Calculate %  
+┃👤 *!whois* – Your WhatsApp info  
+┃📇 *!owner* – Bot owner info  
+┃📥 *!instadl <link>* – Download Instagram media
+┃📷 *!hiddeninfo* – Extract hidden metadata from image
+┃⏳ *!delayedmsg <time> | <message>* – Schedule a message
+
+*╚══════════════════════════╝*
+📜 Use any command above directly here.  
+💬 Type *!menu* anytime to view this list again.`);
     }
 
+
+    //NSFW image generation command
+    if (command === '!nsfw') {
+        const prompt = args.join(' ').trim();
+        if (!prompt) return msg.reply('❗ Use like: `!nsfw a hot girl in bikini at beach`');
+
+        msg.reply('🧠 Generating NSFW image... This may take a few seconds.');
+
+        const { exec } = require('child_process');
+        const { MessageMedia } = require('whatsapp-web.js');
+        const fs = require('fs');
+
+        exec(`python "C:/newbot/stable-diffusion-webui/scripts/generate_nsfw.py" "${prompt}"`, async (error, stdout, stderr) => {
+            if (error) {
+                console.error(stderr);
+                return msg.reply('❌ Failed to generate image.');
+            }
+
+            const imagePath = 'C:/newbot/stable-diffusion-webui/output_nsfw.png';
+            if (fs.existsSync(imagePath)) {
+                const media = MessageMedia.fromFilePath(imagePath);
+                await msg.reply(media);
+            } else {
+                msg.reply('⚠️ Image file not found.');
+            }
+        });
+    }
+
+      // Trivia command
+    if (command === '!trivia') {
+        const chat = await msg.getChat();
+        const chatId = chat.id._serialized;
+        
+        // If a game is already in progress in this chat, don't start a new one
+        if (triviaState[chatId] && triviaState[chatId].active) {
+            return msg.reply('❌ A trivia game is already in progress in this chat!');
+        }
+
+        try {
+            // Fetch a random multiple-choice question
+            const response = await axios.get('https://opentdb.com/api.php?amount=1&type=multiple');
+            const questionData = response.data.results[0];
+
+            if (!questionData) {
+                return msg.reply('❌ Could not fetch a trivia question.');
+            }
+            
+            // Store the question and correct answer in the state
+            triviaState[chatId] = {
+                active: true,
+                correctAnswer: questionData.correct_answer,
+                allAnswers: [...questionData.incorrect_answers, questionData.correct_answer].sort(() => Math.random() - 0.5)
+            };
+            
+            const allAnswers = triviaState[chatId].allAnswers;
+            
+            // Format the question and answers for display
+            let questionText = `🧠 *Trivia Question!* 🧠\n\n`;
+            questionText += `*Category:* ${questionData.category}\n`;
+            questionText += `*Difficulty:* ${questionData.difficulty.charAt(0).toUpperCase() + questionData.difficulty.slice(1)}\n\n`;
+            questionText += `*Q:* ${questionData.question}\n\n`;
+            
+            allAnswers.forEach((answer, index) => {
+                questionText += `*${index + 1}.* ${answer}\n`;
+            });
+            
+            questionText += `\n_Reply with the number of your answer! (e.g., 1)_`;
+            
+            // Send the question
+            await msg.reply(questionText);
+        
+        } catch (error) {
+            console.error('Trivia API error:', error.message);
+            delete triviaState[chatId]; // Clean up state if there's an error
+            msg.reply('❌ Failed to fetch a trivia question. Please try again.');
+        }
+    }
+    
+    // Listen for replies to an active trivia game
+    if (triviaState[msg.from] && triviaState[msg.from].active) {
+        const chatId = msg.from;
+        const userAnswer = parseInt(msg.body.trim());
+        
+        // Check if the user's reply is a number between 1 and 4
+        if (!isNaN(userAnswer) && userAnswer >= 1 && userAnswer <= 4) {
+            
+            const state = triviaState[chatId];
+            const selectedAnswer = state.allAnswers[userAnswer - 1];
+            
+            if (selectedAnswer === state.correctAnswer) {
+                msg.reply(`✅ Correct! The answer was: ${state.correctAnswer}`);
+            } else {
+                msg.reply(`❌ Wrong! The correct answer was: ${state.correctAnswer}`);
+            }
+            
+            // End the game for this chat
+            delete triviaState[chatId];
+        }
+    }
+
+
+    // Command: Movie & TV Show Information
+    if (command === '!imdb') {
+        const query = args.join(' ').trim();
+        if (!query) return msg.reply('❗ Please provide a movie or TV show title.\nExample: `!imdb The Matrix`');
+
+        const OMDB_API_KEY = process.env.OMDB_API_KEY;
+        if (!OMDB_API_KEY) return msg.reply('❌ The OMDb API Key is not configured by the owner.');
+
+        try {
+            const { data } = await axios.get(`https://www.omdbapi.com/?t=${encodeURIComponent(query)}&apikey=${OMDB_API_KEY}`);
+
+            if (data.Response === 'False') {
+                return msg.reply(`❌ Could not find any movie or show titled *"${query}"*.`);
+            }
+
+            const movieInfo = `🎬 *${data.Title}* (${data.Year})
+*Rated:* ${data.Rated}
+*Released:* ${data.Released}
+*Genre:* ${data.Genre}
+*Director:* ${data.Director}
+*Actors:* ${data.Actors}
+*Language:* ${data.Language}
+*Awards:* ${data.Awards}
+⭐ *IMDb Rating:* ${data.imdbRating}
+
+*Plot:* ${data.Plot}`;
+
+            if (data.Poster && data.Poster !== 'N/A') {
+                const media = await MessageMedia.fromUrl(data.Poster, { unsafeMime: true });
+                await msg.reply(media, null, { caption: movieInfo });
+            } else {
+                await msg.reply(movieInfo);
+            }
+        } catch (error) {
+            console.error('OMDb API error:', error.message);
+            msg.reply('❌ Failed to fetch movie data.');
+        }
+    }
+
+    // Command: Dictionary Definition
+    if (command === '!define') {
+        const word = args.join(' ').trim();
+        if (!word) return msg.reply('❗ Please provide a word to define.\nExample: `!define ephemeral`');
+
+        try {
+            const { data } = await axios.get(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`);
+            const entry = data[0];
+            const meaning = entry.meanings[0];
+            const definition = meaning.definitions[0];
+
+            let reply = `📖 *Definition for: ${entry.word}*`;
+            if (entry.phonetic) {
+                reply += `\n*Pronunciation:* ${entry.phonetic}`;
+            }
+            reply += `\n\n*Type:* ${meaning.partOfSpeech}`;
+            reply += `\n*Meaning:* ${definition.definition}`;
+            
+            if (definition.example) {
+                reply += `\n\n*Example:* _"${definition.example}"_`;
+            }
+            
+            msg.reply(reply);
+        } catch (error) {
+            if (error.response && error.response.status === 404) {
+                msg.reply(`❌ Could not find a definition for *"${word}"*. Check spelling.`);
+            } else {
+                console.error('Dictionary API error:', error.message);
+                msg.reply('❌ Failed to fetch definition.');
+            }
+        }
+    }
+
+    // Command: Cryptocurrency Price
+    if (command === '!crypto') {
+        if (args.length < 1) return msg.reply('❗ Usage: `!crypto <symbol>`\nExample: `!crypto btc`');
+        
+        const cryptoSymbol = args[0].toLowerCase();
+        
+        // A helper to map common symbols to the API's required IDs
+        const coinIds = {
+            'btc': 'bitcoin',
+            'eth': 'ethereum',
+            'xrp': 'ripple',
+            'ltc': 'litecoin',
+            'bch': 'bitcoin-cash',
+            'ada': 'cardano',
+            'doge': 'dogecoin',
+            'dot': 'polkadot',
+            'sol': 'solana',
+            'shib': 'shiba-inu'
+        };
+
+        const coinId = coinIds[cryptoSymbol];
+        if (!coinId) return msg.reply(`❌ The symbol *"${cryptoSymbol}"* is not supported or is invalid.`);
+
+        try {
+            const { data } = await axios.get(`https://api.coingecko.com/api/v3/simple/price?ids=${coinId}&vs_currencies=usd,inr&include_24hr_change=true`);
+            
+            const priceData = data[coinId];
+            if (!priceData) return msg.reply('❌ Could not fetch price data.');
+
+            const formatChange = (change) => {
+                const isPositive = change >= 0;
+                return `${isPositive ? '📈' : '📉'} ${change.toFixed(2)}%`;
+            };
+
+            const reply = `*Crypto Price for ${coinId.charAt(0).toUpperCase() + coinId.slice(1)} (${cryptoSymbol.toUpperCase()})*
+
+🇺🇸 *USD:* $${priceData.usd.toLocaleString()}
+🇮🇳 *INR:* ₹${priceData.inr.toLocaleString()}
+
+*24h Change (USD):* ${formatChange(priceData.usd_24h_change)}
+*24h Change (INR):* ${formatChange(priceData.inr_24h_change)}`;
+
+            msg.reply(reply);
+        } catch (error) {
+            console.error('CoinGecko API error:', error.message);
+            msg.reply('❌ Failed to fetch cryptocurrency price.');
+        }
+    }
 
     if (command === '!yt') {
         const searchQuery = msg.body.replace('!yt ', '').trim();
@@ -171,9 +410,16 @@ client.on('message', async msg => {
         msg.reply(`✅ Sent to ${count} chats.`);
     }
 
-    if (command === '!contact') {
-        msg.reply('📞 Owner: Talib\nSystem: Asus F17\nMob: +918303184622');
+    if (command === '!owner') {
+        msg.reply(`👑 *Bot Owner Info*
+
+• 👤 *Name:* Md Talib  
+• 💻 *System:* Asus F17  
+• 📱 *Mobile:* +91 83031 84622  
+• 🧠 *Developer:* WebDev + AI Automation  
+`);
     }
+
 
     if ((command === '!kick' || command === '!remove') && msg.mentionedIds.length > 0) {
         if (!chat.isGroup) return msg.reply('❌ Group only.');
@@ -204,11 +450,42 @@ client.on('message', async msg => {
         chat.sendMessage(text, { mentions });
     }
 
-    if (command === '!whois' && msg.mentionedIds.length > 0) {
-        const id = msg.mentionedIds[0];
-        const contact = await client.getContactById(id);
-        msg.reply(`👤 *User Info*\nName: ${contact.pushname || 'N/A'}\nID: ${id}`);
+    if (command === '!whois') {
+        try {
+            let targetId;
+
+            // Check if a user is tagged; else fallback to sender
+            if (msg.mentionedIds.length > 0) {
+                targetId = msg.mentionedIds[0];
+            } else {
+                const contact = await msg.getContact();
+                targetId = contact.id._serialized;
+            }
+
+            const contact = await client.getContactById(targetId);
+            const name = contact.pushname || "Unknown";
+            const number = contact.number || targetId.split('@')[0];
+            const status = await contact.getAbout() || "No status";
+            const pfpUrl = await contact.getProfilePicUrl();
+
+            let message = `👤 *User Info:*\n`;
+            message += `• *Name:* ${name}\n`;
+            message += `• *Number:* ${number}\n`;
+            message += `• *Status:* ${status}`;
+
+            if (pfpUrl) {
+                const media = await MessageMedia.fromUrl(pfpUrl);
+                await client.sendMessage(msg.from, media, { caption: message });
+            } else {
+                await msg.reply(message);
+            }
+
+        } catch (err) {
+            console.error('Error in !whois:', err);
+            await msg.reply("❌ Couldn't fetch user info.");
+        }
     }
+
 
     if (command === '!math') {
         const expression = msg.body.slice(6).trim();
@@ -272,13 +549,348 @@ client.on('message', async msg => {
         const percent = ((obtained / total) * 100).toFixed(2);
         msg.reply(`🎓 You scored ${obtained} out of ${total} → *${percent}%*`);
     }
+
+    if (command === '!removebg' && msg.hasMedia) {
+        const media = await msg.downloadMedia();
+        const buffer = Buffer.from(media.data, 'base64');
+        const filePath = path.join(__dirname, `temp_${Date.now()}.jpg`);
+        fs.writeFileSync(filePath, buffer);
+
+        const formData = new FormData();
+        formData.append('image_file', fs.createReadStream(filePath));
+
+        try {
+            const response = await axios.post('https://api.remove.bg/v1.0/removebg', formData, {
+                headers: {
+                    ...formData.getHeaders(),
+                    'X-Api-Key': process.env.REMOVE_BG_KEY
+                },
+                responseType: 'arraybuffer'
+            });
+
+            const outputPath = path.join(__dirname, `nobg_${Date.now()}.png`);
+            fs.writeFileSync(outputPath, response.data);
+
+            const resultMedia = MessageMedia.fromFilePath(outputPath);
+            await msg.reply(resultMedia);
+
+            fs.unlinkSync(filePath);
+            fs.unlinkSync(outputPath);
+        } catch (err) {
+            console.error('Remove.bg error:', err.response?.data || err.message);
+            msg.reply('❌ Failed to remove background. Check your API key or image.');
+        }
+    }
+
+    if (command === '!sticker' && msg.hasMedia) {
+        try {
+            const media = await msg.downloadMedia();
+            await client.sendMessage(msg.from, media, {
+                sendMediaAsSticker: true,
+                stickerName: 'Bot Sticker',
+                stickerAuthor: 'YourBot'
+            });
+        } catch (err) {
+            console.error('Sticker error:', err.message);
+            msg.reply('❌ Failed to create sticker.');
+        }
+    }
+
+    if (command === '!tts') {
+        const parts = msg.body.trim().split(' ');
+        const lang = parts[1];
+        const text = parts.slice(2).join(' ');
+
+        if (!lang || !text) {
+            return msg.reply('❗ Usage: !tts <lang-code> <text>\nExample: !tts hi Namaste Duniya');
+        }
+
+        try {
+            const url = googleTTS.getAudioUrl(text, { lang, slow: false });
+            const filePath = path.join(__dirname, `tts_${Date.now()}.mp3`);
+            exec(`curl "${url}" --output "${filePath}"`, async (err) => {
+                if (err) return msg.reply('TTS error.');
+                const media = MessageMedia.fromFilePath(filePath);
+                await msg.reply(media);
+                fs.unlinkSync(filePath);
+            });
+        } catch (e) {
+            msg.reply('❌ Failed to generate audio.');
+        }
+    }
+
+    if (command === '!groupinfo' && msg.isGroupMsg) {
+        const chat = await msg.getChat();
+        const admins = chat.participants.filter(p => p.isAdmin);
+        msg.reply(`👥 *Group Info*
+
+• *Name:* ${chat.name}
+• *Description:* ${chat.description || 'None'}
+• *Participants:* ${chat.participants.length}
+• *Admins:* ${admins.length}
+`);
+    }
+
+    if (command === '!mention' && msg.isGroupMsg) {
+        const text = msg.body.slice(9).trim();
+        if (!text) return msg.reply('❗ Use: !mention <message>');
+        const mentions = [];
+        const chat = await msg.getChat();
+        let message = `📢 *Broadcast:*\n${text}\n\n`;
+
+        for (const participant of chat.participants) {
+            const contact = await client.getContactById(participant.id._serialized);
+            mentions.push(contact);
+            message += `@${contact.number} `;
+        }
+
+        chat.sendMessage(message, { mentions });
+    }
+
+    let antiLink = false;
+
+    if (command === '!antilink') {
+        if (!chat.isGroup) return msg.reply('❗ Group only.');
+        const isAdmin = chat.participants.find(p => p.id._serialized === msg.author)?.isAdmin;
+        if (!isAdmin) return msg.reply('❌ Admin only.');
+        if (args[1] === 'on') {
+            antiLink = true;
+            msg.reply('🔒 Anti-link is now *enabled*.');
+        } else if (args[1] === 'off') {
+            antiLink = false;
+            msg.reply('🔓 Anti-link is now *disabled*.');
+        } else {
+            msg.reply('❗ Use: !antilink on / off');
+        }
+    }
+
+    if (antiLink && msg.body.includes('http') && msg.from.includes('@g.us')) {
+        const chat = await msg.getChat();
+        const sender = await msg.getContact();
+        const isAdmin = chat.participants.find(p => p.id._serialized === sender.id._serialized)?.isAdmin;
+        if (!isAdmin) {
+            msg.reply(`🚫 No links allowed, @${sender.number}`, { mentions: [sender] });
+            await chat.removeParticipants([sender.id._serialized]);
+        }
+    }
+    // Group lock/unlock commands
+    if (command === '!lock' || command === '!unlock') {
+        const isGroup = msg.from.includes('@g.us');
+        if (!isGroup) return msg.reply('❗ Group only.');
+
+        const chat = await msg.getChat();
+        const isAdmin = chat.participants.find(p => p.id._serialized === msg.author)?.isAdmin;
+        if (!isAdmin) return msg.reply('❌ Admin only.');
+
+        await chat.setMessagesAdminsOnly(command === '!lock');
+        msg.reply(command === '!lock' ? '🔒 Group locked (Admins only).' : '🔓 Group unlocked.');
+    }
+    // Promote/Demote commands
+    if ((command === '!promote' || command === '!demote') && msg.mentionedIds.length > 0) {
+        if (!msg.from.includes('@g.us')) return msg.reply('❗ Group only.');
+        const chat = await msg.getChat();
+        const isAdmin = chat.participants.find(p => p.id._serialized === msg.author)?.isAdmin;
+        if (!isAdmin) return msg.reply('❌ Admin only.');
+
+        const targetId = msg.mentionedIds[0];
+        if (command === '!promote') {
+            await chat.promoteParticipants([targetId]);
+            msg.reply(`✅ Promoted <@${targetId.split('@')[0]}>`, { mentions: [await client.getContactById(targetId)] });
+        } else {
+            await chat.demoteParticipants([targetId]);
+            msg.reply(`❌ Demoted <@${targetId.split('@')[0]}>`, { mentions: [await client.getContactById(targetId)] });
+        }
+    }
+    // Instagram commands
+    if (command === '!instainfo') {
+        msg.reply('📸 *Coming Soon: Instagram Info Lookup!*\nInstagram limits data access, but we’re working on a stable method.');
+    }
+
+
+    // Instagram media download command
+    if (command === '!instadl') {
+        const link = msg.body.replace('!instadl', '').trim();
+
+        if (!link || !link.includes('instagram.com')) {
+            return msg.reply('❗ *Usage:* !instadl <Instagram Link>\nExample:\n!instadl https://www.instagram.com/reel/xyz/');
+        }
+
+        try {
+            const id = Date.now();
+            const filePath = path.join(__dirname, `insta_${id}.mp4`);
+            const ytdlpCmd = `python -m yt_dlp -f best -o "${filePath}" "${link}"`;
+
+            await msg.reply('📥 Downloading the video. Please wait...');
+
+            exec(ytdlpCmd, async (err, stdout, stderr) => {
+                if (err) {
+                    console.error('yt-dlp error:', stderr || err.message);
+                    return msg.reply('❌ Failed to download Instagram video.\nMake sure the reel is public and valid.');
+                }
+
+                if (fs.existsSync(filePath)) {
+                    const stats = fs.statSync(filePath);
+                    if (stats.size === 0) {
+                        console.error('❌ File is empty:', filePath);
+                        return msg.reply('❌ Downloaded video is empty. Try another link.');
+                    }
+
+                    try {
+                        const chat = await msg.getChat();
+                        await chat.sendMessage(`📥 Sending Instagram video as document...`);
+
+                        const media = MessageMedia.fromFilePath(filePath);
+                        await chat.sendMessage(media, {
+                            sendMediaAsDocument: true,
+                            caption: '📹 Instagram Video'
+                        });
+
+                        fs.unlinkSync(filePath);
+                    } catch (mediaErr) {
+                        console.error('Media send error:', mediaErr.message);
+                        msg.reply('❌ Could not send the downloaded video.');
+                    }
+                } else {
+                    console.error('❌ File not found after download:', filePath);
+                    msg.reply('❌ Download failed. Try again with a different reel.');
+                }
+            });
+
+        } catch (error) {
+            console.error('!instadl command error:', error.message);
+            msg.reply('❌ Unexpected error occurred while processing the video.');
+        }
+    }
+    // Delayed message command
+    if (command === '!delayedmsg') {
+        try {
+            const parts = msg.body.slice(12).split('|');
+            if (parts.length < 2) {
+                return msg.reply('❗ Usage: !delayedmsg <time> | <message>\nExample: !delayedmsg 10s | Hello World');
+            }
+
+            const timeStr = parts[0].trim().toLowerCase();
+            const message = parts.slice(1).join('|').trim();
+
+            const timeMap = {
+                s: 1000,
+                m: 60000,
+                h: 3600000
+            };
+
+            const unit = timeStr.slice(-1);
+            const value = parseInt(timeStr.slice(0, -1));
+
+            if (!timeMap[unit] || isNaN(value)) {
+                return msg.reply('❗ Invalid time format. Use like 10s, 5m, 2h');
+            }
+
+            const ms = value * timeMap[unit];
+            msg.reply(`⏳ Message scheduled in ${value}${unit}`);
+
+            setTimeout(() => {
+                client.sendMessage(msg.from, `📩 *Scheduled Message:*\n${message}`);
+            }, ms);
+
+        } catch (err) {
+            console.error('delayedmsg error:', err);
+            msg.reply('❌ Failed to schedule message.');
+        }
+    }
+
+    // Hidden metadata extraction command   
+    if (command === '!hiddeninfo' && msg.hasMedia) {
+        try {
+            const media = await msg.downloadMedia();
+            const buffer = Buffer.from(media.data, 'base64');
+            const metadata = await exifr.parse(buffer);
+
+            if (!metadata || Object.keys(metadata).length === 0) {
+                return msg.reply('📷 No metadata (EXIF) found in the image.');
+            }
+
+            let info = `🧾 *Hidden Metadata Found:*\n`;
+            if (metadata.Make) info += `• Make: ${metadata.Make}\n`;
+            if (metadata.Model) info += `• Model: ${metadata.Model}\n`;
+            if (metadata.DateTimeOriginal) info += `• Taken: ${metadata.DateTimeOriginal}\n`;
+            if (metadata.GPSLatitude && metadata.GPSLongitude) {
+                info += `• Location: ${metadata.GPSLatitude}, ${metadata.GPSLongitude}\n`;
+            }
+
+            msg.reply(info);
+        } catch (err) {
+            console.error('hiddeninfo error:', err);
+            msg.reply('❌ Failed to extract metadata.');
+        }
+    } else if (command === '!hiddeninfo') {
+        msg.reply('📎 Please send this command with an image.\nExample: *caption an image with !hiddeninfo*');
+    }
+    // Image search command
+    if (command === '!img5') {
+        const query = msg.body.replace('!img5', '').trim();
+        if (!query) return msg.reply('❗ Usage: !img5 <search term>');
+
+        msg.reply(`🔍 Fetching 5 images for *${query}*...`);
+
+        try {
+            const serpKey = process.env.SERP_API_KEY;
+            const response = await axios.get('https://serpapi.com/search.json', {
+                params: {
+                    q: query,
+                    tbm: 'isch',
+                    api_key: serpKey
+                }
+            });
+
+            const images = response.data.images_results?.slice(0, 5);
+            if (!images || images.length === 0) return msg.reply('❌ No images found.');
+
+            for (const img of images) {
+                const imageUrl = img.original || img.thumbnail;
+                if (!imageUrl) continue;
+
+                try {
+                    const media = await MessageMedia.fromUrl(imageUrl, { unsafeMime: true });
+                    await msg.reply(media);
+                } catch (mediaErr) {
+                    console.warn(`Skipping image: ${imageUrl}\nError: ${mediaErr.message}`);
+                }
+            }
+        } catch (err) {
+            console.error('!img5 error:', err.message);
+            msg.reply('❌ Image search failed. Try again later.');
+        }
+    }
+
 });
 
+
 client.on('group_join', async (notification) => {
-    const chat = await notification.getChat();
-    chat.sendMessage(`👋 Welcome @${notification.id.user} to *${chat.name}*!`, {
-        mentions: [await client.getContactById(notification.id.user + '@c.us')]
-    });
+    try {
+        const chat = await notification.getChat();
+        const contact = await client.getContactById(notification.id.user + '@c.us');
+        const name = contact.pushname || contact.number;
+        const groupName = chat.name;
+
+        const welcomeMessage = `🌸 *Welcome @${contact.number}!* 🌸
+
+✨ We're thrilled to have you in *${groupName}*!
+📖 Please read the rules and be respectful.
+🗣️ Feel free to chat, ask questions, or just vibe.
+
+🏮 Enjoy your stay, senpai!`;
+
+        // ✅ Attach image from /images folder
+        const media = MessageMedia.fromFilePath(path.join(__dirname, 'images', 'anime_welcome.jpg'));
+        await chat.sendMessage(media, {
+            caption: welcomeMessage,
+            mentions: [contact]
+        });
+
+    } catch (err) {
+        console.error('Auto-welcome error:', err.message);
+    }
 });
+
 
 client.initialize();
